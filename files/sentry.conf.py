@@ -37,7 +37,27 @@ from sentry.conf.server import *  # NOQA
 from django.conf import settings
 import os
 import os.path
+import glob
+import ntpath
 import json_log_formatter
+
+# VAULT
+##############################################################
+
+def file_get_contents(filename):
+    with open(filename) as f:
+        return f.read()
+
+def glob_to_env_vars(pattern):
+    for filename in glob.glob(pattern):
+        basename = ntpath.basename(filename)
+        os.environ[basename] = file_get_contents(filename)
+
+vault_path = "/var/run/secrets/nais.io/vault"
+glob_to_env_vars(vault_path + '/SENTRY_*')
+glob_to_env_vars(vault_path + '/GITHUB_*')
+
+##############################################################
 
 SENTRY_BEACON = False
 

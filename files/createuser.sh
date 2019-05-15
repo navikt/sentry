@@ -5,6 +5,6 @@ if [[ -z "$1" ]]; then
 fi
 export SENTRY_CONF="/etc/sentry"
 
-source ./files/vault.sh
+# source ./files/vault.sh
 
 sentry createuser --email admin@sentry.local --superuser --password $1

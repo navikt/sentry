@@ -7,7 +7,8 @@ services:
   postgres:
     restart: unless-stopped
     image: postgres:9.5
-
+    ports:
+      - '5432:5432'
   web:
     restart: unless-stopped
     build: .

@@ -66,8 +66,9 @@ kubectl apply -f nais.io/proxy/app.yaml
 ```
 ### Vault
 Nais is using vault to manage secrets. They get injected into a folder and we read them into environment variables as 
-seen in the file [/start.sh](./blob/master/files/start.sh). For local development we use the same mechanism to inject
-variables.
+seen in the file [/vault.sh](./blob/master/files/vault.sh). For local development we use the same mechanism to inject
+variables. This file can be used to set these variables in custom scripting. `source ./files/vault.sh; your-script.sh`.
+But for sentry commands this is done by `sentry.conf.py`
 
 ### Google Application Credentials
 The environment variable `GOOGLE_APPLICATION_CREDENTIALS` should referee to a filepath not the whole json-object. We 
