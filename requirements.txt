@@ -1,0 +1,3 @@
+https://github.com/getsentry/sentry-auth-github/archive/master.zip
+JSON-log-formatter
+google-cloud-storage

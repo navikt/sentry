@@ -1,0 +1,69 @@
+access_log off; # Handled by trafic
+error_log /dev/stdout debug;
+charset utf-8;
+client_body_buffer_size 10M; # Default er satt veldig lavt. Får problemer med enkelte dokument queries.
+proxy_buffering off;
+resolver "${RESOLVER}" ipv6=off;
+resolver_timeout 3s;
+tcp_nodelay off; ## No need to bleed constant updates. Send the all shebang in one fell swoop.
+tcp_nopush off;
+gzip off;
+gzip_proxied any;
+absolute_redirect off; # minor change
+
+gzip_types
+    text/css
+    text/javascript
+    text/xml
+    text/plain
+    application/javascript
+    application/x-javascript
+    application/json
+    application/xml
+    application/rss+xml
+    application/atom+xml
+    font/truetype
+    font/opentype
+    image/svg+xml;
+
+server {
+    listen "${APP_PORT}";
+    server_name  _;
+
+    # Proxy headers. Will be overwritten if you set them in blocks.
+    proxy_hide_header       Content-Security-Policy;
+    proxy_hide_header       Set-Cookie;
+    proxy_ignore_headers    Set-Cookie; # We don't want the backend to set cookies.
+    proxy_intercept_errors  off;
+    proxy_pass_header       Nav-Callid;
+    proxy_redirect          off;
+    proxy_set_header        Connection "";
+    proxy_set_header        Referer $http_referer;
+    proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header        X-Real-IP $remote_addr;
+    proxy_set_header        "$API_GW_HEADER" "$API_GW_APIKEY";
+    proxy_ssl_verify        off;
+
+    # Health check for NAIS
+    location = /health/isAlive {
+        return 200 "Application:UP";
+        default_type text/plain;
+    }
+
+    # Readiness check for NAIS
+    location = /health/isReady {
+        return 200 "Application:READY";
+        default_type text/plain;
+    }
+
+    # Just slap frontend directly to the prefix
+    location / {
+        return 200 "Dummy route";
+        default_type text/plain;
+    }
+    # ~ ^/api/(\d+\/store\/.*)
+    location ~ ^/api/(\d+\/store\/.*) {
+        proxy_pass "$API_GATEWAY_URL/api/$1$is_args$args";
+    }
+
+}

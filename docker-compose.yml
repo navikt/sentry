@@ -1,0 +1,28 @@
+version: '3.4'
+
+x-defaults: &defaults
+  restart: unless-stopped
+  build: .
+  depends_on:
+    - redis
+    - postgres
+
+  environment:
+    SENTRY_REDIS_HOST: redis
+    SENTRY_POSTGRES_HOST: postgres
+  volumes:
+    - ./vault:/var/run/secrets/nais.io/vault
+
+services:
+  redis:
+    restart: unless-stopped
+    image: redis:3.2-alpine
+
+  postgres:
+    restart: unless-stopped
+    image: postgres:9.5
+
+  web:
+    <<: *defaults
+    ports:
+      - '9000:9000'
