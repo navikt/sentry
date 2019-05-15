@@ -1,0 +1,19 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run: docker-compose up --build --remove-orphans -d
+      - deploy:
+          command: |
+            export IMAGE=navikt/sentry
+            export VERSION=v$(date "+%Y%m%d")
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USER" --password-stdin
+              docker build -t ${IMAGE}:${VERSION} .
+              docker tag      ${IMAGE}:${VERSION} ${IMAGE}:latest
+              docker push     ${IMAGE}:${VERSION}
+              docker push     ${IMAGE}:latest
+            fi
