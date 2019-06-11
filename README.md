@@ -49,7 +49,7 @@ Diagnostic you can get diagnostic information on: http://localhost:9000/_health/
 ### Creating a superuser
 Unfortunately this has to be done manually inside the pod. Fortunately its easy:
 ```bash
-kubectl exec -it your_sentry_pod -- sentry createuser --email admin@sentry.local --password supersecret
+kubectl exec -it your_sentry_pod -- sentry createuser --email admin@sentry.local --password supersecret --superuser
 ```
 After this the GITHUB_APPS integration should handle signup. That worked fine for us.
 

@@ -2,7 +2,7 @@ version: '3'
 services:
   redis:
     restart: unless-stopped
-    image: redis:3.2-alpine
+    image: redis
 
   postgres:
     restart: unless-stopped
