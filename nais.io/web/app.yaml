@@ -6,7 +6,7 @@ metadata:
   name: sentry
   namespace: default
 spec:
-  image: navikt/sentry:v0.17 # Required. Docker image
+  image: navikt/sentry:v20190611 # Required. Docker image
   imagePullPolicy: Always
   port: 9000 # Required. The port number which is exposed by the container and should receive HTTP traffic.
   team: teamforeldrepenger # Required. Set to the team that owns this application.
