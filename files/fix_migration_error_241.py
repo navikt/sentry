@@ -1,6 +1,10 @@
 from django.db import connection, transaction
+from click import echo
+
 ## Fix on sentry issue...
 ## https://github.com/getsentry/sentry/issues/9270
+
+echo("Started fixing migration error 241")
 try:
     cursor = connection.cursor()
     cursor.execute('''
@@ -23,5 +27,6 @@ try:
         $$ language plpgsql;
     ''')
     transaction.commit_unless_managed()
+    echo("Finished fixing migration error 241")
 except:
     pass

@@ -9,9 +9,9 @@ then
     done
 fi
 export RESOLVER=$(cat /etc/resolv.conf | grep -v '^#' | grep -m 1 nameserver | awk '{print $2}')
-export API_GW_APIKEY="${API_GW_APIKEY:-dummy}"
-export API_GW_HEADER="${API_GW_HEADER:-x-dummy}"
-
+export API_GW_APIKEY="${API_GW_APIKEY:-dummy-gw-key}"
+export API_GW_HEADER="${API_GW_HEADER:-x-dummy-gw-header}"
+export APP_VERSION="${APP_VERSION:-dev-img}"
 # replace env for nginx conf
 envsubst '$APP_VERSION $APP_PORT $RESOLVER $API_GATEWAY_URL $API_GW_APIKEY $API_GW_HEADER' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/default.conf
 
