@@ -58,12 +58,39 @@ server {
 
     # Just slap frontend directly to the prefix
     location / {
-        return 200 "Dummy route";
+        return 200 "Sentry Proxy ($APP_VERSION)";
         default_type text/plain;
     }
-    # ~ ^/api/(\d+\/store\/.*)
+
     location ~ ^/api/(\d+\/store\/.*) {
         proxy_pass "$API_GATEWAY_URL/api/$1$is_args$args";
     }
 
+    location ~ ^/api/(\d+\/csp-report\/.*) {
+        proxy_pass "$API_GATEWAY_URL/api/$1$is_args$args";
+    }
+
+    location ~ ^/api/(\d+\/unreal\/.*) {
+        proxy_pass "$API_GATEWAY_URL/api/$1$is_args$args";
+    }
+
+    location ~ ^/api/(\d+\/security\/.*) {
+        proxy_pass "$API_GATEWAY_URL/api/$1$is_args$args";
+    }
+
+    location ~ ^/api/(\d+\/minidump\/.*) {
+        proxy_pass "$API_GATEWAY_URL/api/$1$is_args$args";
+    }
+
+    location ~ ^/extensions/slack/action/.* {
+        proxy_pass "$API_GATEWAY_URL/extensions/slack/action/$is_args$args";
+    }
+
+    location ~ ^/extensions/slack/options-load/.* {
+        proxy_pass "$API_GATEWAY_URL/extensions/slack/options-load/$is_args$args";
+    }
+
+    location ~ ^/extensions/slack/event/.* {
+        proxy_pass "$API_GATEWAY_URL/extensions/slack/event/$is_args$args";
+    }
 }

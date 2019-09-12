@@ -2,14 +2,14 @@ apiVersion: "nais.io/v1alpha1"
 kind: "Application"
 metadata:
   labels:
-    team: teamforeldrepenger
+    team: {{team}}
   name: sentry
   namespace: default
 spec:
-  image: navikt/sentry:v20190611 # Required. Docker image
+  image: navikt/sentry:{{version}} # Required. Docker image
   imagePullPolicy: Always
   port: 9000 # Required. The port number which is exposed by the container and should receive HTTP traffic.
-  team: teamforeldrepenger # Required. Set to the team that owns this application.
+  team: {{team}} # Required. Set to the team that owns this application.
   liveness: # HTTP endpoint that signals 200 OK when the application is running.
     path: /_health/
     initialDelay: 240 # Need to wait for migrations.
@@ -63,3 +63,5 @@ spec:
     value: /var/run/secrets/nais.io/vault/GOOGLE_APPLICATION_CREDENTIALS
   - name: SENTRY_GCS_BUCKET_NAME
     value: navikt-sentry
+  - name: SENTRY_SYSTEM_URL_PREFIX
+    value: https://sentry.nav.no

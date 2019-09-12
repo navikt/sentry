@@ -1,19 +1,129 @@
-version: 2
+version: 2.1
+
+executors:
+  docker-publisher:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+  nais-deployer:
+    docker:
+      - image: navikt/deployment-cli:latest
+
 jobs:
-  build:
-    machine: true
-    working_directory: ~/repo
+  verify:
+    executor: docker-publisher
+    working_directory: ~/sentry
     steps:
+      - run:
+          name: Creating Github Apps Installation Token
+          command: |
+            git clone https://github.com/navikt/github-apps-support.git
+            export PATH=`pwd`/github-apps-support/bin:$PATH
+            echo $GITHUB_PRIVATE_KEY | base64 --decode > ./github.key.pem
+            GITHUB_TOKEN=$(generate-installation-token.sh `generate-jwt.sh ./github.key.pem $GITHUB_APP_ID`)
+            echo "export GITHUB_TOKEN=$GITHUB_TOKEN" >> $BASH_ENV
+            echo -e "machine api.github.com login x-access-token password $GITHUB_TOKEN" >> .netrc
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./.netrc
+            - ./github.key.pem
+  test:
+    executor: docker-publisher
+    working_directory: ~/sentry
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Unpack variables
+          command: cp /tmp/workspace/.netrc ~/.netrc
       - checkout
-      - run: docker-compose up --build --remove-orphans -d
-      - deploy:
+      - run:
+          name: Start sentry with docker-compose
+          command: docker-compose up -d
+      - run:
+          name: Docker PS
+          command:  docker ps
+      - run:
+          name: Test that sentry is running
+          command: chmod +x ./wait-or-fail.sh && ./wait-or-fail.sh
+      - run:
+          name: Determin release version
+          command: |
+            export GIT_COMMIT_HASH=$(git log -n 1 --pretty=format:'%h')
+            export GIT_COMMIT_DATE=$(git log -1 --pretty='%ad' --date=format:'%Y%m%d')
+            export VERSION=v${GIT_COMMIT_DATE}_${GIT_COMMIT_HASH}
+            echo $VERSION > ./VERSION.txt
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./VERSION.txt
+            - ./Dockerfile
+            - ./nais.io
+
+  publish-docker:
+    executor: docker-publisher
+    working_directory: ~/sentry
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Unpack variables
+          command: cp /tmp/workspace/.netrc ~/.netrc
+      - checkout
+      - run:
+          name: Publish Docker Image to Dockerhub
           command: |
             export IMAGE=navikt/sentry
-            export VERSION=v$(date "+%Y%m%d")
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USER" --password-stdin
-              docker build -t ${IMAGE}:${VERSION} .
-              docker tag      ${IMAGE}:${VERSION} ${IMAGE}:latest
-              docker push     ${IMAGE}:${VERSION}
-              docker push     ${IMAGE}:latest
-            fi
+            export VERSION=$(cat /tmp/workspace/VERSION.txt)
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_LOGIN" --password-stdin
+            docker build -t ${IMAGE}:${VERSION} .
+            docker tag      ${IMAGE}:${VERSION} ${IMAGE}:latest
+            docker push     ${IMAGE}:${VERSION}
+            docker push     ${IMAGE}:latest
+  deploy:
+    executor: nais-deployer
+    working_directory: ~/sentry
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Create NAIS Github deployment
+          command: |
+            export VERSION=$(cat /tmp/workspace/VERSION.txt)
+            deployment-cli deploy create \
+            --cluster=prod-fss \
+            --repository=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME \
+            --appid=${GITHUB_APP_ID} \
+            --team=teamforeldrepenger \
+            --var version=${VERSION} \
+            --key=/tmp/workspace/github.key.pem \
+            --resource=/tmp/workspace/nais.io/web/app.yaml
+
+workflows:
+  version: 2
+  test-and-deploy-pipeline:
+    jobs:
+      - verify:
+          context: familie-ci
+      - test:
+          context: familie-ci
+          requires:
+            - verify
+      - publish-docker:
+          context: NAIS deployment
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
+      - deploy:
+          context: familie-ci
+          requires:
+            - publish-docker
+          filters:
+            branches:
+              only: master

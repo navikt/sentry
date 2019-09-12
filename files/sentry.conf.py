@@ -54,9 +54,10 @@ def glob_to_env_vars(pattern):
         os.environ[basename] = file_get_contents(filename)
 
 vault_path = "/var/run/secrets/nais.io/vault"
+
 glob_to_env_vars(vault_path + '/SENTRY_*')
 glob_to_env_vars(vault_path + '/GITHUB_*')
-
+glob_to_env_vars(vault_path + '/SLACK_*')
 ##############################################################
 
 SENTRY_BEACON = False
@@ -353,3 +354,16 @@ if 'GITHUB_APP_ID' in os.environ:
 if 'BITBUCKET_CONSUMER_KEY' in os.environ:
     BITBUCKET_CONSUMER_KEY = env('BITBUCKET_CONSUMER_KEY')
     BITBUCKET_CONSUMER_SECRET = env('BITBUCKET_CONSUMER_SECRET')
+
+if env('SENTRY_SYSTEM_URL_PREFIX'):
+    SENTRY_OPTIONS['system.url-prefix'] = env('SENTRY_SYSTEM_URL_PREFIX')
+
+# Slack
+if env('SLACK_CLIENT_ID'):
+    SENTRY_OPTIONS['slack.client-id'] = env('SLACK_CLIENT_ID')
+
+if env('SLACK_CLIENT_SECRET'):
+    SENTRY_OPTIONS['slack.client-secret'] = env('SLACK_CLIENT_SECRET')
+
+if env('SLACK_VERIFICATION_TOKEN'):
+    SENTRY_OPTIONS['slack.verification-token'] = env('SLACK_VERIFICATION_TOKEN')

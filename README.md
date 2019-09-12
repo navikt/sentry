@@ -74,6 +74,16 @@ But for sentry commands this is done by `sentry.conf.py`
 The environment variable `GOOGLE_APPLICATION_CREDENTIALS` should referee to a filepath not the whole json-object. We 
 also use vault to store this setting and just make a reference to it in environment variables.
 
+## Running locally with docker-compose
+
+Convient use the `./up.sh` script at the root to bring up your services.
+
+To create a user in docker compose, simply run something like this:
+```
+docker-compose run web sentry createuser --email admin@sentry.local --superuser --password v3rrYs3cre7
+```
+This command has to be run after the migration scripts are ran, so just wait for the service to be ready.
+
 
 [nais]: https://nais.io/
 [sentry helm chart]: https://github.com/helm/charts/tree/master/stable/sentry
