@@ -346,11 +346,11 @@ if 'SENTRY_RUNNING_UWSGI' not in os.environ and len(secret_key) < 32:
 
 SENTRY_OPTIONS['system.secret-key'] = secret_key
 
-if 'GITHUB_APP_ID' in os.environ:
+if 'GITHUB_APP_CLIENT_ID' in os.environ:
     GITHUB_EXTENDED_PERMISSIONS = ['repo']
-    GITHUB_APP_ID = env('GITHUB_APP_ID')
+    GITHUB_APP_ID = env('GITHUB_APP_CLIENT_ID')
     GITHUB_API_SECRET = env('GITHUB_API_SECRET')
-
+    GITHUB_REQUIRE_VERIFIED_EMAIL = True
 if 'BITBUCKET_CONSUMER_KEY' in os.environ:
     BITBUCKET_CONSUMER_KEY = env('BITBUCKET_CONSUMER_KEY')
     BITBUCKET_CONSUMER_SECRET = env('BITBUCKET_CONSUMER_SECRET')
@@ -367,3 +367,29 @@ if env('SLACK_CLIENT_SECRET'):
 
 if env('SLACK_VERIFICATION_TOKEN'):
     SENTRY_OPTIONS['slack.verification-token'] = env('SLACK_VERIFICATION_TOKEN')
+
+# Github integration
+if env('GITHUB_APP_ID'):
+    SENTRY_OPTIONS['github-app.id'] = int(env('GITHUB_APP_ID'));
+
+if env('GITHUB_APP_NAME'):
+    SENTRY_OPTIONS['github-app.name'] = env('GITHUB_APP_NAME');
+
+if env('GITHUB_APP_WEBOOK_SECRET'):
+    SENTRY_OPTIONS['github-app.webhook-secret'] = env('GITHUB_APP_WEBOOK_SECRET');
+
+if env('GITHUB_APP_PRIVATE_KEY'):
+    SENTRY_OPTIONS['github-app.private-key'] = env('GITHUB_APP_PRIVATE_KEY');
+
+if env('GITHUB_APP_CLIENT_ID'):
+    SENTRY_OPTIONS['github-app.client-id'] = env('GITHUB_APP_CLIENT_ID');
+
+if env('GITHUB_API_SECRET'):
+    SENTRY_OPTIONS['github-app.client-secret'] = env('GITHUB_API_SECRET');
+
+
+# Enables the Custom Inbound Filters feature
+SENTRY_FEATURES['projects:custom-inbound-filters'] = True
+
+# Enables the Discard and Delete feature
+SENTRY_FEATURES[‘projects:discard-groups’] = True
