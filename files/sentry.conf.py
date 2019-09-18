@@ -392,4 +392,4 @@ if env('GITHUB_API_SECRET'):
 SENTRY_FEATURES['projects:custom-inbound-filters'] = True
 
 # Enables the Discard and Delete feature
-SENTRY_FEATURES[‘projects:discard-groups’] = True
+SENTRY_FEATURES['projects:discard-groups'] = True
