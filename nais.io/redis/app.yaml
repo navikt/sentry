@@ -2,13 +2,13 @@ apiVersion: "nais.io/v1alpha1"
 kind: "Application"
 metadata:
   labels:
-    team: teamforeldrepenger
+    team: dataplattform
   name: sentry-redis
   namespace: default
 spec:
   image: redis:alpine
   port: 6379
-  team: teamforeldrepenger
+  team: dataplattform
   replicas:
     min: 1
     max: 1

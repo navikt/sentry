@@ -2,13 +2,13 @@ apiVersion: "nais.io/v1alpha1"
 kind: "Application"
 metadata:
   labels:
-    team: teamforeldrepenger
+    team: dataplattform
   name: sentry-proxy
   namespace: default
 spec:
   image: repo.adeo.no:5443/sentry-proxy:RELEASE_VERSION
   port: 8043
-  team: teamforeldrepenger
+  team: dataplattform
   liveness:
     path: /health/isAlive
     initialDelay: 10

@@ -77,7 +77,7 @@ jobs:
       - run:
           name: Publish Docker Image to Dockerhub
           command: |
-            export IMAGE=navikt/sentry
+            export IMAGE=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
             export VERSION=$(cat /tmp/workspace/VERSION.txt)
             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_LOGIN" --password-stdin
             docker build -t ${IMAGE}:${VERSION} .
@@ -98,7 +98,7 @@ jobs:
             --cluster=prod-fss \
             --repository=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME \
             --appid=${GITHUB_APP_ID} \
-            --team=teamforeldrepenger \
+            --team=dataplattform \
             --var version=${VERSION} \
             --key=/tmp/workspace/github.key.pem \
             --resource=/tmp/workspace/nais.io/web/app.yaml
