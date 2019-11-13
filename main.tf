@@ -1,9 +1,13 @@
-variable {
-  name = "dbpassword"
+terraform {
+  backend "gcs" {
+    bucket = "terraform-navikt-sentry"
+  }
+}
+
+variable "db_password" {
 }
 
 provider "google" {
-  credentials = "${file("navikt-sentry-5e28d3138dff.json")}"
   project     = "navikt-sentry"
   region      = "europe-north1"
   zone        = "europe-north1-b"
@@ -66,6 +70,5 @@ resource "google_sql_database" "sentry-database" {
 resource "google_sql_user" "sentry-sql-user" {
   name     = "sentry"
   instance = "${google_sql_database_instance.sentry-database-instance.name}"
-  host     = "${element(google_compute_instance.sentry-instance.0.network_interface.0.access_config.0.nat_ip)}"
-  password = "${var.dbpassword}"
+  password = "${var.db_password}"
 }
