@@ -12,8 +12,8 @@ vault() {
 vault_secrets=$(vault read /secret/aura/sentry --format=json)
 enc_key=$(echo -n $vault_secrets | jq -r '.data["terraform_enc-key"]')
 db_password=$(echo -n $vault_secrets | jq -r '.data["db_password"]')
+
 openssl enc -d -aes-256-cbc -a -A -md md5 -k "$enc_key" < "sa.json.enc" > sa.json
-cat sa.json
 export GOOGLE_APPLICATION_CREDENTIALS=./sa.json
 terraform init
 terraform apply -var "db_password=$db_password"
