@@ -93,7 +93,7 @@ GITHUB_API_SECRET=${github_api_secret}
 #SENTRY_GITHUB_APP_CLIENT_SECRET=
 #SENTRY_GITHUB_APP_WEBHOOK_SECRET=${github_app_webhook_secret}
 #SENTRY_GITHUB_APP_PRIVATE_KEY=
-SENTRY_SYSTEM_URL_PREFIX=https://${sentry_external_url}
+SENTRY_SYSTEM_URL_PREFIX=https://${sentry_url}
 EOF
 
 # ./install.sh

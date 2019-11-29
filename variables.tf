@@ -14,11 +14,8 @@ variable "sentry_secret_key" {}
 variable "sentry_slack_client_id" {}
 variable "sentry_slack_client_secret" {}
 variable "sentry_slack_verification_token" {}
-variable "sentry_internal_url" {
-  default = "sentry.navtunnel"
-}
-variable "sentry_external_url" {
-  default = "sentry.gc.nav.no"
+variable "sentry_url" {
+  default = "sentry-open.gc.nav.no"
 }
 variable "nginx_image" {
   default = "nginx:1.17-alpine"

@@ -1,6 +1,7 @@
 terraform {
   backend "gcs" {
     bucket = "terraform-navikt-sentry"
+    prefix = "open"
   }
 }
 
@@ -17,19 +18,22 @@ provider "google-beta" {
 }
 
 /* Network */
+data "google_compute_lb_ip_ranges" "ranges" {
+}
+
 resource "google_compute_subnetwork" "sentry" {
-  name          = "sentry"
-  ip_cidr_range = "10.55.0.0/24"
+  name          = "sentry-open"
+  ip_cidr_range = "10.56.0.0/24"
   network       = google_compute_network.sentry.self_link
 }
 
 resource "google_compute_network" "sentry" {
-  name                    = "sentry"
+  name                    = "sentry-open"
   auto_create_subnetworks = false
 }
 
 resource "google_compute_firewall" "allow-ssh" {
-  name    = "allow-ssh"
+  name    = "allow-ssh-sentry"
   network = google_compute_network.sentry.self_link
 
   allow {
@@ -40,58 +44,27 @@ resource "google_compute_firewall" "allow-ssh" {
   target_tags = ["allow-ssh"]
 }
 
-resource "google_compute_firewall" "allow-scaleft-to-sentry" {
-  name    = "allow-scaleft-to-sentry"
-  network = google_compute_network.sentry.self_link
-
-  allow {
-    protocol = "tcp"
-    ports    = ["80", "9000"]
-  }
-
-  source_tags = ["scaleft-instance"]
-  target_tags = ["sentry-instance"]
-}
-
-resource "google_compute_firewall" "allow-sentry-proxy-to-sentry" {
-  name    = "allow-sentry-proxy-to-sentry"
-  network = google_compute_network.sentry.self_link
-
-  allow {
-    protocol = "tcp"
-    ports    = ["80", "9000"]
-  }
-
-  source_tags = ["sentry-proxy-instance"]
-  target_tags = ["sentry-instance"]
-}
-
-data "google_compute_lb_ip_ranges" "ranges" {
-}
-
 resource "google_compute_firewall" "lb" {
-  name    = "lb-firewall"
+  name    = "sentry-lb-firewall"
   network = google_compute_network.sentry.name
 
   allow {
     protocol = "tcp"
-    ports    = ["80"]
+    ports    = ["9000"]
   }
 
   source_ranges = data.google_compute_lb_ip_ranges.ranges.network
   target_tags = [
-    "sentry-proxy-instance",
+    "sentry-instance",
   ]
 }
 
-resource "google_compute_address" "sentry-static-internal-ip" {
-  name         = "sentry-static-internal-ip"
-  address_type = "INTERNAL"
-  subnetwork   = google_compute_subnetwork.sentry.self_link
+resource "google_compute_address" "sentry-external-address" {
+  name = "sentry-external-address"
 }
 
 resource "google_compute_global_address" "db_private_ip_address" {
-  name          = "db-private-ip-address"
+  name          = "db-private-ip-address-open"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
@@ -106,7 +79,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 
 /* Database */
 resource "google_sql_database_instance" "sentry-database-instance" {
-  name             = "sentry-database-instance"
+  name             = "sentry-database-instance-open"
   database_version = "POSTGRES_9_6"
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
@@ -136,14 +109,14 @@ resource "google_sql_user" "sentry-sql-user" {
 
 /* Redis */
 resource "google_redis_instance" "sentry-cache" {
-  name               = "memory-cache"
+  name               = "sentry-cache-open"
   authorized_network = google_compute_network.sentry.self_link
   memory_size_gb     = 10
 }
 
 /* VMs */
 resource "google_compute_instance" "sentry" {
-  name                      = "sentry"
+  name                      = "sentry-open"
   machine_type              = "n1-standard-4"
   allow_stopping_for_update = true
 
@@ -168,63 +141,7 @@ resource "google_compute_instance" "sentry" {
     github_app_name                 = var.github_app_name
     github_app_webhook_secret       = var.github_app_webhook_secret
     github_app_private_key          = var.github_app_private_key
-    sentry_external_url             = var.sentry_external_url
-    }
-  )
-
-  boot_disk {
-    initialize_params {
-      image = "gce-uefi-images/cos-stable"
-    }
-  }
-
-  network_interface {
-    network    = google_compute_network.sentry.self_link
-    subnetwork = google_compute_subnetwork.sentry.self_link
-    network_ip = google_compute_address.sentry-static-internal-ip.address
-
-    access_config {
-    }
-  }
-}
-
-resource "google_compute_instance" "scaleft" {
-  name                      = "scaleft"
-  machine_type              = "g1-small"
-  allow_stopping_for_update = true
-
-  network_interface {
-    subnetwork = google_compute_subnetwork.sentry.self_link
-
-    access_config {
-    }
-  }
-
-  tags = ["scaleft-instance", "allow-ssh"]
-
-  metadata_startup_script = templatefile("${path.module}/startup_scripts/scaleft.sh", {
-    canonical_name   = "sentry"
-    enrollment_token = var.scaleft_enrollment_token
-    }
-  )
-
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-minimal-1904"
-    }
-  }
-}
-
-resource "google_compute_instance" "sentry-proxy" {
-  name                      = "sentry-proxy"
-  machine_type              = "f1-micro"
-  allow_stopping_for_update = true
-
-  tags = ["sentry-proxy-instance", "allow-ssh"]
-  metadata_startup_script = templatefile("${path.module}/startup_scripts/nginx.sh", {
-    nginx_image         = var.nginx_image
-    sentry_internal_ip  = google_compute_instance.sentry.network_interface.0.network_ip
-    sentry_internal_url = var.sentry_internal_url
+    sentry_url                      = var.sentry_url
     }
   )
 
@@ -239,100 +156,100 @@ resource "google_compute_instance" "sentry-proxy" {
     subnetwork = google_compute_subnetwork.sentry.self_link
 
     access_config {
+      nat_ip = google_compute_address.sentry-external-address.address
     }
   }
 }
 
-# Make sentry-proxy internet
-resource "google_compute_instance_group" "sentry-proxy-instances" {
-  name        = "sentry-proxy-instances"
-  description = "Sentry-proxy instances"
+# Make sentry internet
+resource "google_compute_instance_group" "sentry-instances" {
+  name        = "sentry-instances"
+  description = "Sentry-instances"
 
   instances = [
-    google_compute_instance.sentry-proxy.self_link
+    google_compute_instance.sentry.self_link
   ]
 
   named_port {
-    name = "http"
-    port = "80"
-  }
-
-  named_port {
-    name = "https"
-    port = "443"
+    name = "sentry"
+    port = "9000"
   }
 }
 
 resource "google_compute_managed_ssl_certificate" "sentry-gc-nav-no" {
   provider = google-beta
 
-  name = "sentry-gc-nav-no-cert"
+  name = "sentry-open-gc-nav-no-cert"
   managed {
     domains = [
-      var.sentry_external_url
+      var.sentry_url
     ]
   }
 }
 
-resource "google_compute_target_https_proxy" "sentry-proxy" {
-  name             = "sentry-proxy"
-  url_map          = google_compute_url_map.sentry-proxy.self_link
+resource "google_compute_target_https_proxy" "sentry" {
+  name             = "sentry"
+  url_map          = google_compute_url_map.sentry.self_link
   ssl_certificates = [google_compute_managed_ssl_certificate.sentry-gc-nav-no.self_link]
 }
 
-resource "google_compute_url_map" "sentry-proxy" {
-  name        = "sentry-proxy-url-map"
-  description = "Sentry proxy url map"
+resource "google_compute_url_map" "sentry" {
+  name        = "sentry-url-map"
+  description = "Sentry url map"
 
-  default_service = google_compute_backend_service.sentry-proxy.self_link
+  default_service = google_compute_backend_service.sentry.self_link
 
   host_rule {
-    hosts        = [var.sentry_external_url]
+    hosts        = [var.sentry_url]
     path_matcher = "allpaths"
   }
 
   path_matcher {
     name            = "allpaths"
-    default_service = google_compute_backend_service.sentry-proxy.self_link
+    default_service = google_compute_backend_service.sentry.self_link
 
     path_rule {
       paths   = ["/*"]
-      service = google_compute_backend_service.sentry-proxy.self_link
+      service = google_compute_backend_service.sentry.self_link
     }
   }
 }
 
-resource "google_compute_backend_service" "sentry-proxy" {
-  name        = "sentry-proxy"
-  port_name   = "http"
+resource "google_compute_backend_service" "sentry" {
+  name        = "sentry"
+  port_name   = "sentry"
   protocol    = "HTTP"
   timeout_sec = 10
 
-  health_checks = [google_compute_http_health_check.default.self_link]
+  health_checks = [google_compute_health_check.default.self_link]
 
   backend {
-    group = google_compute_instance_group.sentry-proxy-instances.self_link
+    group = google_compute_instance_group.sentry-instances.self_link
   }
 }
 
-resource "google_compute_http_health_check" "default" {
-  name               = "http-health-check"
-  request_path       = "/"
-  check_interval_sec = 1
+resource "google_compute_health_check" "default" {
+  name               = "sentry-health-check"
   timeout_sec        = 1
+  check_interval_sec = 1
+
+  http_health_check {
+    port = "9000"
+    request_path = "/_health/"
+  }
 }
 
-resource "google_compute_global_address" "sentry-proxy" {
-  name = "sentry-proxy"
+resource "google_compute_global_address" "sentry" {
+  name = "sentry"
 }
 
 resource "google_compute_global_forwarding_rule" "default" {
   provider = google-beta
 
-  ip_address            = google_compute_global_address.sentry-proxy.address
+  ip_address            = google_compute_global_address.sentry.address
   load_balancing_scheme = "EXTERNAL"
-  name                  = "sentry-proxy-forwarding-rule"
-  target                = google_compute_target_https_proxy.sentry-proxy.self_link
+  name                  = "sentry-forwarding-rule"
+  target                = google_compute_target_https_proxy.sentry.self_link
   port_range            = 443
 }
 
@@ -340,8 +257,8 @@ resource "google_compute_global_forwarding_rule" "default" {
 module "gce-lb-http" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-lb-http"
   project     = "navikt-sentry"
-  name        = "sentry-proxy-http-lb"
-  target_tags = ["sentry-proxy-instance"]
+  name        = "sentry-http-lb"
+  target_tags = ["sentry-instance"]
   ssl         = true
   ssl_certificates = [
     google_compute_managed_ssl_certificate.sentry-gc-nav-no.self_link
@@ -367,3 +284,7 @@ module "gce-lb-http" {
   ]
 }
 */
+
+output "lb_address" {
+  value = google_compute_global_address.sentry
+}
