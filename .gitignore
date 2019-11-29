@@ -1,5 +1,1 @@
-.env
 .terraform
-.idea/
-vault/*
-!vault/.gitkeep

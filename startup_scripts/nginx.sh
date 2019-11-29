@@ -1,10 +1,14 @@
-access_log off; # Handled by trafic
+#!/bin/bash
+# install sentry
+echo "running cloud init" >> /tmp/log.txt
+mkdir -p /var/lib/nginx
+
+cat > /var/lib/nginx/default.conf <<'EOF'
+access_log off; # Handled gcloud ELB
 error_log /dev/stdout info;
 charset utf-8;
-client_body_buffer_size 10M; # Default er satt veldig lavt. Får problemer med enkelte dokument queries.
+client_body_buffer_size 10M; # Default er satt veldig lavt. Faar problemer med enkelte dokument queries.
 proxy_buffering off;
-resolver "${RESOLVER}" ipv6=off;
-resolver_timeout 3s;
 tcp_nodelay off; ## No need to bleed constant updates. Send the all shebang in one fell swoop.
 tcp_nopush off;
 gzip off;
@@ -27,7 +31,7 @@ gzip_types
     image/svg+xml;
 
 server {
-    listen "${APP_PORT}";
+    listen 80;
     server_name  _;
 
     # Proxy headers. Will be overwritten if you set them in blocks.
@@ -43,23 +47,6 @@ server {
     proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header        X-Real-IP $remote_addr;
     proxy_set_header        Cookie "";
-    proxy_ssl_verify        off;
-
-
-    if ($request_uri ~ "^/extensions/.*") {
-        set $gateway_header "$GATEWAY_KEY_EXTENSIONS";
-    }
-
-    if ($request_uri ~ "^/api/.*") {
-        set $gateway_header "$GATEWAY_KEY_API";
-    }
-    proxy_set_header "$GATEWAY_HEADER_NAME" $gateway_header;
-
-    # Health check for NAIS
-    location = /health/isAlive {
-        return 200          "Application:UP";
-        default_type        text/plain;
-    }
 
     # Readiness check for NAIS
     location = /health/isReady {
@@ -69,60 +56,74 @@ server {
 
     # Just slap frontend directly to the prefix
     location / {
-        return 200          "Sentry Proxy ($APP_VERSION)";
+        return 200          "Sentry Proxy";
         default_type        text/plain;
     }
 
     # Auth redirect (no proxy)
     location = /auth/sso/ {
-        return 302          "$SENTRY_INTERNAL_URL$request_uri";
+        return 302          "http://${sentry_internal_url}$request_uri";
     }
     location = /extensions/slack/setup/ {
-        return 302          "$SENTRY_INTERNAL_URL$request_uri";
+        return 302          "http://${sentry_internal_url}$request_uri";
     }
     location = /extensions/github/setup/ {
-        return 302          "$SENTRY_INTERNAL_URL$request_uri";
+        return 302          "http://${sentry_internal_url}$request_uri";
     }
     location  ~ ^/([a-z\-]+)/([a-z\-]+)/issues/(\d+\/.*) {
-        return 301          "$SENTRY_INTERNAL_URL$request_uri";
+        return 301          "http://${sentry_internal_url}$request_uri";
     }
 
     # Collect endpoints
     location ~ ^/api/(\d+\/store\/.*) {
-        proxy_pass          "$GATEWAY_URL/api/$1$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/api/$1$is_args$args";
     }
 
     location ~ ^/api/(\d+\/csp-report\/.*) {
-        proxy_pass          "$GATEWAY_URL/api/$1$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/api/$1$is_args$args";
     }
 
     location ~ ^/api/(\d+\/unreal\/.*) {
-        proxy_pass          "$GATEWAY_URL/api/$1$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/api/$1$is_args$args";
     }
 
     location ~ ^/api/(\d+\/security\/.*) {
-        proxy_pass          "$GATEWAY_URL/api/$1$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/api/$1$is_args$args";
     }
 
     location ~ ^/api/(\d+\/minidump\/.*) {
-        proxy_pass          "$GATEWAY_URL/api/$1$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/api/$1$is_args$args";
     }
 
     # Slack integration
     location ~ ^/extensions/slack/action/.* {
-        proxy_pass          "$GATEWAY_URL/extensions/slack/action/$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/extensions/slack/action/$is_args$args";
     }
 
     location ~ ^/extensions/slack/options-load/.* {
-        proxy_pass          "$GATEWAY_URL/extensions/slack/options-load/$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/extensions/slack/options-load/$is_args$args";
     }
 
     location ~ ^/extensions/slack/event/.* {
-        proxy_pass          "$GATEWAY_URL/extensions/slack/event/$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/extensions/slack/event/$is_args$args";
     }
 
     # Github integration
     location ~ ^/extensions/github/webhook/.* {
-        proxy_pass          "$GATEWAY_URL/extensions/github/webhook/$is_args$args";
+        proxy_pass          "http://${sentry_internal_ip}/extensions/github/webhook/$is_args$args";
     }
 }
+EOF
+
+echo "starting container" >> /tmp/log.txt
+# start sentry proxy
+docker run --rm \
+    -p 80:80 \
+    --name nginx \
+    -v /var/run \
+    -v /var/cache/nginx \
+    -v /var/lib/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro \
+    --read-only \
+    -d \
+    ${nginx_image}
+echo "cloud init done" >> /tmp/log.txt
