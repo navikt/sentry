@@ -1,18 +1,17 @@
 terraform {
   backend "gcs" {
-    bucket = "terraform-navikt-sentry"
-    prefix = "open"
+    bucket = "terraform-sentry-260810"
   }
 }
 
 provider "google" {
-  project = "navikt-sentry"
+  project = "sentry-260810"
   region  = "europe-north1"
   zone    = "europe-north1-b"
 }
 
 provider "google-beta" {
-  project = "navikt-sentry"
+  project = "sentry-260810"
   region  = "europe-north1"
   zone    = "europe-north1-b"
 }
@@ -22,13 +21,13 @@ data "google_compute_lb_ip_ranges" "ranges" {
 }
 
 resource "google_compute_subnetwork" "sentry" {
-  name          = "sentry-open"
-  ip_cidr_range = "10.56.0.0/24"
+  name          = "sentry"
   network       = google_compute_network.sentry.self_link
+  ip_cidr_range = "10.55.0.0/24"
 }
 
 resource "google_compute_network" "sentry" {
-  name                    = "sentry-open"
+  name                    = "sentry"
   auto_create_subnetworks = false
 }
 
@@ -64,7 +63,7 @@ resource "google_compute_address" "sentry-external-address" {
 }
 
 resource "google_compute_global_address" "db_private_ip_address" {
-  name          = "db-private-ip-address-open"
+  name          = "db-private-ip-address"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
@@ -79,7 +78,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 
 /* Database */
 resource "google_sql_database_instance" "sentry-database-instance" {
-  name             = "sentry-database-instance-open"
+  name             = "sentry-database-instance"
   database_version = "POSTGRES_9_6"
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
@@ -109,14 +108,14 @@ resource "google_sql_user" "sentry-sql-user" {
 
 /* Redis */
 resource "google_redis_instance" "sentry-cache" {
-  name               = "sentry-cache-open"
+  name               = "sentry-cache"
   authorized_network = google_compute_network.sentry.self_link
   memory_size_gb     = 10
 }
 
 /* VMs */
 resource "google_compute_instance" "sentry" {
-  name                      = "sentry-open"
+  name                      = "sentry"
   machine_type              = "n1-standard-4"
   allow_stopping_for_update = true
 
@@ -134,14 +133,14 @@ resource "google_compute_instance" "sentry" {
     sentry_slack_client_id          = var.sentry_slack_client_id
     sentry_slack_client_secret      = var.sentry_slack_client_secret
     sentry_slack_verification_token = var.sentry_slack_verification_token
-    github_api_secret               = var.github_api_secret
-    github_app_client_id            = var.github_app_client_id
-    github_app_client_secret        = var.github_app_client_secret
-    github_app_id                   = var.github_app_id
-    github_app_name                 = var.github_app_name
-    github_app_webhook_secret       = var.github_app_webhook_secret
-    github_app_private_key          = var.github_app_private_key
-    sentry_url                      = var.sentry_url
+    #github_api_secret               = var.github_api_secret
+    #github_app_client_id            = var.github_app_client_id
+    #github_app_client_secret        = var.github_app_client_secret
+    #github_app_id                   = var.github_app_id
+    #github_app_name                 = var.github_app_name
+    #github_app_webhook_secret       = var.github_app_webhook_secret
+    #github_app_private_key          = var.github_app_private_key
+    sentry_url = var.sentry_url
     }
   )
 
@@ -179,7 +178,7 @@ resource "google_compute_instance_group" "sentry-instances" {
 resource "google_compute_managed_ssl_certificate" "sentry-gc-nav-no" {
   provider = google-beta
 
-  name = "sentry-open-gc-nav-no-cert"
+  name = "sentry-gc-nav-no-cert"
   managed {
     domains = [
       var.sentry_url
@@ -234,7 +233,7 @@ resource "google_compute_health_check" "default" {
   check_interval_sec = 1
 
   http_health_check {
-    port = "9000"
+    port         = "9000"
     request_path = "/_health/"
   }
 }
@@ -252,38 +251,6 @@ resource "google_compute_global_forwarding_rule" "default" {
   target                = google_compute_target_https_proxy.sentry.self_link
   port_range            = 443
 }
-
-/*
-module "gce-lb-http" {
-  source      = "github.com/GoogleCloudPlatform/terraform-google-lb-http"
-  project     = "navikt-sentry"
-  name        = "sentry-http-lb"
-  target_tags = ["sentry-instance"]
-  ssl         = true
-  ssl_certificates = [
-    google_compute_managed_ssl_certificate.sentry-gc-nav-no.self_link
-  ]
-  use_ssl_certificates = true
-  backends = {
-    "0" = [
-      { group                        = google_compute_instance_group.sentry-proxy-instances
-        balancing_mode               = null
-        capacity_scaler              = null
-        description                  = null
-        max_connections              = null
-        max_connections_per_instance = null
-        max_rate                     = null
-        max_rate_per_instance        = null
-        max_utilization              = null
-      }
-    ]
-  }
-  backend_params = [
-    # health check path, port name, port number, timeout seconds.
-    "/,http,80,10"
-  ]
-}
-*/
 
 output "lb_address" {
   value = google_compute_global_address.sentry

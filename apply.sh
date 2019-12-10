@@ -23,7 +23,6 @@ terraform init
 
 terraform apply \
   -var "sentry_image=sentry:9.1.2" \
-  -var "github_app_name=sentry-on-prem" \
   -var "$(vault_secret scaleft_enrollment_token)" \
   -var "$(vault_secret sentry_secret_key)" \
   -var "$(vault_secret sentry_db_name)" \
@@ -31,12 +30,13 @@ terraform apply \
   -var "$(vault_secret sentry_db_password)" \
   -var "$(vault_secret sentry_slack_client_id)" \
   -var "$(vault_secret sentry_slack_client_secret)" \
-  -var "$(vault_secret sentry_slack_verification_token)" \
-  -var "$(vault_secret github_api_secret)" \
-  -var "$(vault_secret github_app_client_id)" \
-  -var "$(vault_secret github_app_client_secret)" \
-  -var "$(vault_secret github_app_id)" \
-  -var "$(vault_secret github_app_private_key)" \
-  -var "$(vault_secret github_app_webhook_secret)"
+  -var "$(vault_secret sentry_slack_verification_token)" #\
+  #-var "github_app_name=sentry-on-prem" \
+  #-var "$(vault_secret github_api_secret)" \
+  #-var "$(vault_secret github_app_client_id)" \
+  #-var "$(vault_secret github_app_client_secret)" \
+  #-var "$(vault_secret github_app_id)" \
+  #-var "$(vault_secret github_app_private_key)" \
+  #-var "$(vault_secret github_app_webhook_secret)"
 
 rm sa.json

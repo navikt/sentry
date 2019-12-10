@@ -9,16 +9,7 @@ sudo mv onpremise sentry
 cd sentry
 
 cat > requirements.txt <<EOF
-https://github.com/getsentry/sentry-auth-github/archive/master.zip
-EOF
-
-cat > config.yml <<EOF
-github-app.id: ${github_app_id}
-github-app.name: ${github_app_name}
-github-app.webhook-secret: ${github_app_webhook_secret}
-github-app.private-key: ${github_app_private_key}
-github-app.client-id: ${github_app_client_id}
-github-app.client-secret: ${github_app_client_secret}
+https://github.com/getsentry/sentry-auth-saml2/archive/master.zip
 EOF
 
 cat > docker-compose.yml <<EOF
@@ -86,13 +77,6 @@ SENTRY_REDIS_PORT=${sentry_redis_port}
 SENTRY_SLACK_CLIENT_ID=${sentry_slack_client_id}
 SENTRY_SLACK_CLIENT_SECRET=${sentry_slack_client_secret}
 SENTRY_SLACK_VERIFICATION_TOKEN=${sentry_slack_verification_token}
-GITHUB_APP_ID=${github_app_id}
-GITHUB_API_SECRET=${github_api_secret}
-#SENTRY_GITHUB_APP_ID=
-#SENTRY_GITHUB_APP_CLIENT_ID=${github_app_client_id}
-#SENTRY_GITHUB_APP_CLIENT_SECRET=
-#SENTRY_GITHUB_APP_WEBHOOK_SECRET=${github_app_webhook_secret}
-#SENTRY_GITHUB_APP_PRIVATE_KEY=
 SENTRY_SYSTEM_URL_PREFIX=https://${sentry_url}
 EOF
 
